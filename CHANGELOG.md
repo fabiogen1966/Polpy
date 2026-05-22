@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0] - 2026-05-22
+
+### Corretto
+- Pattern test MMR: supporto numerazione paragrafi multi-livello (es. 10.4.3.4.3)
+- Formattazione prime 2 righe: Courier-Bold 10.5 allineato a sinistra (non più centrato)
+- Formattazione blocco certificato (file B): Courier-Bold 13 sottolineato centrato
+
+### Migliorato
+- Rilevamento formattazione PCL: distinzione tra bold font (`\x1b(s1B`), bold block (`\x1b&k1S`) e underline (`\x1b&dD`)
+- `pcl_cleaner.py` restituisce tuple a 3 elementi `(riga, is_bold, is_underline)`
+- Sottolineatura disegnata con `canvas.line()` nel PDF
+
 ## [1.1.0] - 2026-05-22
 
 ### Aggiunto

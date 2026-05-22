@@ -23,7 +23,7 @@ Polpy legge file `.prn` (output di stampa in formato PCL), rimuove le sequenze d
 
 ## Download e utilizzo rapido (utente finale)
 
-1. Vai alla pagina [Releases](https://github.com/fabiogen1966/Polpy/releases/tag/v1.0.0)
+1. Vai alla pagina [Releases](https://github.com/fabiogen1966/Polpy/releases/latest)
 2. Scarica `Polpy.exe`
 3. Metti l'exe in una cartella a piacere
 4. Crea accanto all'exe le cartelle `input/` e `output/`
