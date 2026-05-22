@@ -25,7 +25,7 @@ Thumbs.db
 Desktop.ini
 
 # Output generato
-output/*.pdf
+*.pdf
 
 # Environment e segreti
 .env
@@ -45,6 +45,10 @@ DSExplorer.EXE
 input/*.prn
 input/*.pcl
 input/*.txt
+input/*.rar
+input/*.7z
+input/*.zip
+input/*.py
 
 # Configurazione locale (override personali)
 config.local.yaml
