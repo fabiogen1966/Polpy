@@ -151,7 +151,7 @@ bottom_limit = 10 * mm
 
 page_pattern = re.compile(r'-\s*\d+\s*-\s*$')
 test_pattern = re.compile(
-    r'^\s*(0[1-9]|[12]\d|30)\s*-\s*(\d+\.\d+(?:\.\d+)?)\s+(.+?)\s*$', re.IGNORECASE)
+    r'^\s*(0[1-9]|[12]\d|30)\s*-\s*(\d+(?:\.\d+)+)\s+(.+?)\s*$', re.IGNORECASE)
 consumption_pattern = re.compile(
     r'^\s*01\s*-\s*[\d.]+\s+Equipment\s+Power\s+Supply\s+Consumption\s*$', re.IGNORECASE)
 special_headers = [

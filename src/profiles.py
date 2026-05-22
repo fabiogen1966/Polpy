@@ -45,7 +45,7 @@ PROFILE_MMR = DocumentProfile(
     name="MMR",
     file_pattern="MMR_Efa_*.prn",
     output_filename="MMR_output.pdf",
-    test_pattern=r'^\s*(0[1-9]|[12]\d|30)\s*-\s*(\d+\.\d+(?:\.\d+)?)\s+(.+?)\s*$',
+    test_pattern=r'^\s*(0[1-9]|[12]\d|30)\s*-\s*(\d+(?:\.\d+)+)\s+(.+?)\s*$',
     consumption_pattern=r'^\s*01\s*-\s*[\d.]+\s+Equipment\s+Power\s+Supply\s+Consumption\s*$',
     special_headers=[
         r'SPE-J-343-A-0041',
