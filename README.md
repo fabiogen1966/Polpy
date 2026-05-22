@@ -163,8 +163,7 @@ Polpy/
 ├── scripts/               # Script standalone
 │   ├── converti_dmep_pdf.py   # Solo DMEP
 │   ├── converti_mmr_pdf.py    # Solo MMR
-│   ├── converti_all_pdf.py    # Entrambi
-│   └── converti_pcl_pdf.py    # Script originale (legacy)
+│   └── converti_all_pdf.py    # Entrambi
 └── src/                   # Codice sorgente
     ├── __init__.py        # Versione del pacchetto
     ├── __main__.py        # Entry point (GUI default, --cli per CLI)
