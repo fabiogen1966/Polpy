@@ -12,30 +12,32 @@ Polpy legge file `.prn` (output di stampa in formato PCL), rimuove le sequenze d
 - Riconoscimento automatico di intestazioni, test e struttura documento
 - Pulizia sequenze di escape PCL configurabile
 - Supporto orientamento landscape/portrait e formati A4, Letter, Legal
-- Build eseguibile standalone per distribuzione senza Python installato
+- Eseguibile standalone per distribuzione senza Python installato
 
 ## Download e utilizzo rapido (utente finale)
 
-1. Scarica la cartella `dist/Polpy/` dal repository
-2. Copia la cartella su qualsiasi PC Windows (7, 10, 11)
-3. Metti i file `.prn` nella sottocartella `input/`
-4. Doppio click su `Polpy.exe`
-5. Dalla GUI configura i parametri e premi "Converti in PDF"
-6. Il PDF viene generato nella cartella `output/`
+1. Vai alla pagina [Releases](https://github.com/fabiogen1966/Polpy/releases/tag/v1.0.0)
+2. Scarica `Polpy.exe`
+3. Metti l'exe in una cartella a piacere
+4. Crea accanto all'exe le cartelle `input/` e `output/`
+5. Metti i file `.prn` nella cartella `input/`
+6. Doppio click su `Polpy.exe`
+7. Dalla GUI seleziona le cartelle, configura i parametri e premi "Converti in PDF"
+8. Il PDF viene generato nella cartella `output/`
 
-> Non serve installare Python né altre dipendenze. L'exe è autocontenuto.
+> Non serve installare Python né altre dipendenze. L'exe è autocontenuto e compatibile con Windows 7, 10, 11.
 
-## Requisiti
+## Requisiti (solo per sviluppo)
 
 - Python 3.8+ (testato con 3.8.10 e 3.13.5)
 - Dipendenze: `reportlab`, `PyYAML`
-- Piattaforma: Windows 7+ (compatibile Win7, Win10, Win11)
+- Piattaforma: Windows 7+
 
-## Installazione
+## Installazione (sviluppatori)
 
 ```bash
 # Clona il repository
-git clone https://github.com/GENSOFT/Polpy.git
+git clone https://github.com/fabiogen1966/Polpy.git
 cd Polpy
 
 # Crea un virtual environment
@@ -92,7 +94,7 @@ polpy-gui
 
 ## Build eseguibile (distribuzione standalone)
 
-Per creare un `.exe` distribuibile su macchine senza Python installato (es. Windows 7):
+Per ricreare l'exe distribuibile su macchine senza Python:
 
 ### Prerequisiti di build
 
@@ -109,24 +111,18 @@ build.bat
 Lo script automaticamente:
 1. Crea un virtual environment con Python 3.8
 2. Installa le dipendenze + PyInstaller
-3. Genera l'eseguibile in `dist\Polpy\`
+3. Genera l'eseguibile standalone `dist/Polpy.exe`
 
 ### Risultato
 
 ```
-dist\Polpy\
-├── Polpy.exe        ← eseguibile (doppio click)
-├── config.yaml      ← configurazione modificabile dall'utente
-├── input\           ← cartella per i file .prn
-├── output\          ← cartella di destinazione PDF
-└── (DLL e librerie)
+dist/
+└── Polpy.exe    ← eseguibile standalone (doppio click)
 ```
-
-Per il deploy: copiare l'intera cartella `dist\Polpy\` sulla macchina target.
 
 ## Configurazione
 
-Tutti i parametri sono configurabili tramite il file `config.yaml`:
+Tutti i parametri sono configurabili tramite il file `config.yaml` o direttamente dalla GUI:
 
 | Parametro | Descrizione | Default |
 |-----------|-------------|---------|
@@ -160,12 +156,14 @@ Polpy/
 ├── polpy_app.py           # Entry point per PyInstaller
 ├── polpy.spec             # Configurazione PyInstaller
 ├── README.md
+├── CHANGELOG.md
 ├── LICENSE
 ├── .gitignore
-├── input/                 # File PRN di input (esempio)
-│   ├── DMEP_Efa_01.prn
-│   └── ...
-├── output/                # PDF generati
+├── .gitattributes
+├── dist/
+│   └── Polpy.exe          # Eseguibile standalone
+├── input/                 # Cartella per i file PRN di input
+├── output/                # Cartella di destinazione PDF
 ├── scripts/               # Script legacy/utility
 │   └── converti_pcl_pdf.py
 └── src/                   # Codice sorgente
