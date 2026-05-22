@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import List, Tuple, Optional
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import landscape, portrait, A4, letter, legal
@@ -34,8 +34,8 @@ def _get_page_dimensions(config: AppConfig) -> Tuple[float, float]:
 
 
 def generate_pdf(files: List[Path], config: AppConfig,
-                 profile: "DocumentProfile" = None) -> Path:
-    """Genera un PDF a partire da una lista di file di testo.
+                 profile: Optional[DocumentProfile] = None) -> Path:
+    """Genera un PDF a partire da una lista di file PRN.
 
     Args:
         files: Lista di Path ai file PRN.
@@ -45,7 +45,7 @@ def generate_pdf(files: List[Path], config: AppConfig,
     Returns:
         Path del file PDF generato.
     """
-    from .pcl_cleaner import clean_pcl
+    from .pcl_cleaner import process_file_with_bold
 
     page_w, page_h = _get_page_dimensions(config)
     pagesize = (page_w, page_h)
@@ -54,7 +54,6 @@ def generate_pdf(files: List[Path], config: AppConfig,
     output_dir = Path(config.output_folder)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Se c'è un profilo, usa il suo output filename
     if profile:
         output_filename = profile.output_filename
     else:
@@ -76,13 +75,13 @@ def generate_pdf(files: List[Path], config: AppConfig,
 
     # Compila i pattern regex dal profilo o dal config
     if profile:
-        pcl_patterns = profile.pcl_cleanup_patterns
+        pcl_sequences = profile.pcl_cleanup_patterns
         page_pattern = re.compile(profile.page_break_pattern, re.IGNORECASE)
         test_pattern = re.compile(profile.test_pattern, re.IGNORECASE)
         consumption_pattern = re.compile(profile.consumption_pattern, re.IGNORECASE)
         special_headers = [re.compile(p, re.IGNORECASE) for p in profile.special_headers]
     else:
-        pcl_patterns = config.pcl_cleanup_patterns
+        pcl_sequences = config.pcl_cleanup_patterns
         page_pattern = re.compile(config.page_break_pattern, re.IGNORECASE)
         test_pattern = re.compile(config.test_pattern, re.IGNORECASE)
         consumption_pattern = re.compile(config.consumption_pattern, re.IGNORECASE)
@@ -92,11 +91,10 @@ def generate_pdf(files: List[Path], config: AppConfig,
 
     for file in files:
         raw = file.read_text(errors="ignore")
-        text = clean_pcl(raw, pcl_patterns)
-        lines = text.split("\n")
+        processed_lines = process_file_with_bold(raw, pcl_sequences)
 
         # Salta file vuoti
-        if not any(line.strip() for line in lines):
+        if not any(line.strip() for line, _ in processed_lines):
             continue
 
         if not first:
@@ -105,7 +103,7 @@ def generate_pdf(files: List[Path], config: AppConfig,
 
         y = top_margin
 
-        for idx, line in enumerate(lines):
+        for idx, (line, is_bold) in enumerate(processed_lines):
             stripped = line.strip()
 
             # Intestazioni speciali
@@ -121,23 +119,29 @@ def generate_pdf(files: List[Path], config: AppConfig,
                 y -= (line_height + 2)
 
             # Test
-            else:
+            elif test_pattern.match(stripped):
                 tm = test_pattern.match(stripped)
-                if tm:
-                    test_no, par, desc = tm.groups()
-                    formatted = f"{test_no} - {par} {desc}"
-                    c.setFont(*title_font)
-                    c.drawCentredString(page_w / 2, y, formatted)
-                    y -= (line_height + 2)
-                else:
-                    # Testo normale
-                    c.setFont(*normal_font)
-                    c.drawString(left_margin, y, line.rstrip())
-                    y -= line_height
+                test_no, par, desc = tm.groups()
+                formatted = f"{test_no} - {par} {desc}"
+                c.setFont(*title_font)
+                c.drawCentredString(page_w / 2, y, formatted)
+                y -= (line_height + 2)
+
+            # Testo bold (blocco titolo certificato nel file B)
+            elif is_bold and stripped:
+                c.setFont(*title_font)
+                c.drawCentredString(page_w / 2, y, stripped)
+                y -= (line_height + 2)
+
+            # Testo normale
+            else:
+                c.setFont(*normal_font)
+                c.drawString(left_margin, y, line.rstrip())
+                y -= line_height
 
             # Cambio pagina logico
             if page_pattern.search(stripped):
-                remaining = any(l.strip() for l in lines[idx + 1:])
+                remaining = any(l.strip() for l, _ in processed_lines[idx + 1:])
                 if remaining:
                     c.showPage()
                     y = top_margin
@@ -145,7 +149,7 @@ def generate_pdf(files: List[Path], config: AppConfig,
 
             # Overflow fisico della pagina
             if y < bottom_limit:
-                remaining = any(l.strip() for l in lines[idx + 1:])
+                remaining = any(l.strip() for l, _ in processed_lines[idx + 1:])
                 if remaining:
                     c.showPage()
                     y = top_margin

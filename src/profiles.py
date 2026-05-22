@@ -30,11 +30,13 @@ PROFILE_DMEP = DocumentProfile(
         r'ANV-213\s+DME-P\s+P/N',
     ],
     pcl_cleanup_patterns=[
-        r'\x1b\(s1Q',
-        r'\x1b\(s1B',
-        r'\x1b\(s0B',
-        r'\x1b&k1S',
-        r'\x1b&k0S',
+        '\x1b(s1Q',
+        '\x1b(s1B',
+        '\x1b(s0B',
+        '\x1b&k1S',
+        '\x1b&k0S',
+        '\x1b&dD',
+        '\x1b&d@',
     ],
 )
 
@@ -50,13 +52,13 @@ PROFILE_MMR = DocumentProfile(
         r'ANV-243\s+MMR-RNAV\s+P/N',
     ],
     pcl_cleanup_patterns=[
-        r'\x1b\(s1Q',
-        r'\x1b\(s1B',
-        r'\x1b\(s0B',
-        r'\x1b&k1S',
-        r'\x1b&k0S',
-        r'\x1b&dD',
-        r'\x1b&d@',
+        '\x1b(s1Q',
+        '\x1b(s1B',
+        '\x1b(s0B',
+        '\x1b&k1S',
+        '\x1b&k0S',
+        '\x1b&dD',
+        '\x1b&d@',
     ],
 )
 
