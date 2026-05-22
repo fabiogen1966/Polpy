@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+# coding: utf-8
+"""
+Conversione PCL/PRN → PDF per file MMR (ANV-243 MMR-RNAV).
+Eseguire nella stessa directory che contiene i file MMR_Efa_*.prn.
+Il PDF viene generato nella stessa directory.
+"""
+
 from pathlib import Path
 import re
 from reportlab.pdfgen import canvas
@@ -7,12 +15,14 @@ from reportlab.lib.units import mm
 # =====================================================
 # CONFIGURAZIONE
 # =====================================================
-INPUT_FOLDER = "."
-OUTPUT_PDF = "output_finale.pdf"
+WORK_DIR = Path(".")
+FILE_PATTERN = "MMR_Efa_*.prn"
+OUTPUT_PDF = "MMR_output.pdf"
 
 # =====================================================
 # PULIZIA PCL
 # =====================================================
+
 def clean_pcl(text):
     patterns = [
         r'\x1b\(s1Q',
@@ -20,6 +30,8 @@ def clean_pcl(text):
         r'\x1b\(s0B',
         r'\x1b&k1S',
         r'\x1b&k0S',
+        r'\x1b&dD',
+        r'\x1b&d@',
     ]
     for p in patterns:
         text = re.sub(p, '', text)
@@ -28,8 +40,14 @@ def clean_pcl(text):
 # =====================================================
 # LETTURA FILES
 # =====================================================
-base = Path(INPUT_FOLDER)
-files = sorted(base.glob("*.prn"))
+
+files = sorted(WORK_DIR.glob(FILE_PATTERN))
+
+if not files:
+    print(f"Nessun file '{FILE_PATTERN}' trovato nella directory corrente.")
+    exit(1)
+
+print(f"Trovati {len(files)} file MMR da elaborare...")
 
 # =====================================================
 # CREAZIONE PDF
@@ -47,35 +65,32 @@ bottom_limit = 10 * mm
 # =====================================================
 # REGEX
 # =====================================================
-page_pattern = re.compile(r'(pag\.?|pagina|page)\s*\d+', re.IGNORECASE)
 
-# TEST 01-18
+# Cambio pagina: "- N -" a fine riga
+page_pattern = re.compile(r'-\s*\d+\s*-\s*$')
+
+# Test MMR: "NN - 10.X.X descrizione" (01-30)
 test_pattern = re.compile(
-    r'^\s*(0[1-9]|1[0-8])\s*-\s*ATP\s+Par\.\s*([0-9.]+)\s+(.+?)\s*$',
+    r'^\s*(0[1-9]|[12]\d|30)\s*-\s*(\d+\.\d+(?:\.\d+)?)\s+(.+?)\s*$',
     re.IGNORECASE
 )
 
-# Consumption
+# Consumption MMR
 consumption_pattern = re.compile(
-    r'^\s*01\s*-\s*Consumption\s*$',
+    r'^\s*01\s*-\s*[\d.]+\s+Equipment\s+Power\s+Supply\s+Consumption\s*$',
     re.IGNORECASE
 )
 
-# Intestazioni speciali
+# Intestazioni speciali MMR
 special_headers = [
-    re.compile(r'DOCUMENT-CODE-1\s+Issue\s+\w+\s+\w+\s+\d{4}', re.IGNORECASE),
-    re.compile(r'DOCUMENT-CODE-2\s+EQUIPMENT\s+P/N\s+[\d-/]+', re.IGNORECASE),
+    re.compile(r'SPE-J-343-A-0041', re.IGNORECASE),
+    re.compile(r'ANV-243\s+MMR-RNAV\s+P/N', re.IGNORECASE),
 ]
-
-# =====================================================
-# CREAZIONE PAGINA
-# =====================================================
-def new_page():
-    return top_margin
 
 # =====================================================
 # ELABORAZIONE FILES
 # =====================================================
+
 first = True
 
 for file in files:
@@ -88,67 +103,53 @@ for file in files:
 
     if not first:
         c.showPage()
-    first = False
 
-    y = new_page()
+    first = False
+    y = top_margin
 
     for idx, line in enumerate(lines):
         stripped = line.strip()
 
-        # =============================================
-        # TITOLI SPECIALI
-        # =============================================
+        # Intestazioni speciali
         if any(p.search(stripped) for p in special_headers):
             c.setFont(*title_font)
             c.drawCentredString(PAGE_W / 2, y, stripped)
             y -= (line_height + 2)
 
-        # =============================================
-        # CONSUMPTION
-        # =============================================
+        # Consumption
         elif consumption_pattern.match(stripped):
             c.setFont(*title_font)
             c.drawCentredString(PAGE_W / 2, y, stripped)
             y -= (line_height + 2)
 
-        # =============================================
-        # TEST 01-18
-        # =============================================
+        # Test
         else:
             tm = test_pattern.match(stripped)
             if tm:
                 test_no, par, desc = tm.groups()
-                formatted = f"{test_no} - ATP Par. {par} {desc}"
+                formatted = f"{test_no} - {par} {desc}"
                 c.setFont(*title_font)
                 c.drawCentredString(PAGE_W / 2, y, formatted)
                 y -= (line_height + 2)
-
-            # =========================================
-            # TESTO NORMALE
-            # =========================================
             else:
                 c.setFont(*normal_font)
                 c.drawString(left_margin, y, line.rstrip())
                 y -= line_height
 
-        # =============================================
-        # CAMBIO PAGINA LOGICO
-        # =============================================
+        # Cambio pagina logico
         if page_pattern.search(stripped):
             remaining = any(l.strip() for l in lines[idx + 1:])
             if remaining:
                 c.showPage()
-                y = new_page()
-                continue
+                y = top_margin
+            continue
 
-        # =============================================
-        # OVERFLOW FISICO
-        # =============================================
+        # Overflow fisico
         if y < bottom_limit:
             remaining = any(l.strip() for l in lines[idx + 1:])
             if remaining:
                 c.showPage()
-                y = new_page()
+                y = top_margin
 
 # =====================================================
 # SALVATAGGIO PDF

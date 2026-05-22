@@ -11,9 +11,11 @@ if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from src.config_loader import load_config, AppConfig, FontConfig, PageConfig
     from src.pdf_generator import generate_pdf
+    from src.profiles import ALL_PROFILES, DocumentProfile
 else:
     from .config_loader import load_config, AppConfig, FontConfig, PageConfig
     from .pdf_generator import generate_pdf
+    from .profiles import ALL_PROFILES, DocumentProfile
 
 
 class PolpyApp:
@@ -21,8 +23,8 @@ class PolpyApp:
 
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("Polpy - PCL/PRN → PDF Converter")
-        self.root.geometry("700x620")
+        self.root.title("Polpy - PCL/PRN \u2192 PDF Converter")
+        self.root.geometry("720x660")
         self.root.resizable(True, True)
 
         # Carica configurazione come valori di default
@@ -38,8 +40,9 @@ class PolpyApp:
         """Inizializza le variabili Tk dai valori di configurazione."""
         self.var_input_folder = tk.StringVar(value=self.config.input_folder)
         self.var_output_folder = tk.StringVar(value=self.config.output_folder)
-        self.var_output_filename = tk.StringVar(value=self.config.output_filename)
-        self.var_file_pattern = tk.StringVar(value=self.config.file_pattern)
+
+        # Profilo
+        self.var_profile = tk.StringVar(value="DMEP")
 
         # Pagina
         self.var_orientation = tk.StringVar(value=self.config.page.orientation)
@@ -61,10 +64,10 @@ class PolpyApp:
         notebook = ttk.Notebook(self.root)
         notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-        # Tab 1: File e Cartelle
-        tab_files = ttk.Frame(notebook, padding=10)
-        notebook.add(tab_files, text="File e Cartelle")
-        self._build_files_tab(tab_files)
+        # Tab 1: Conversione
+        tab_convert = ttk.Frame(notebook, padding=10)
+        notebook.add(tab_convert, text="Conversione")
+        self._build_convert_tab(tab_convert)
 
         # Tab 2: Pagina
         tab_page = ttk.Frame(notebook, padding=10)
@@ -76,12 +79,7 @@ class PolpyApp:
         notebook.add(tab_fonts, text="Font")
         self._build_fonts_tab(tab_fonts)
 
-        # Tab 4: Pattern
-        tab_patterns = ttk.Frame(notebook, padding=10)
-        notebook.add(tab_patterns, text="Pattern")
-        self._build_patterns_tab(tab_patterns)
-
-        # Barra inferiore con pulsanti e progress
+        # Barra inferiore con progress e status
         bottom_frame = ttk.Frame(self.root, padding=10)
         bottom_frame.pack(fill=tk.X)
 
@@ -92,56 +90,74 @@ class PolpyApp:
         status_label = ttk.Label(bottom_frame, textvariable=self.status_var, foreground="gray")
         status_label.pack(side=tk.LEFT)
 
-        btn_convert = ttk.Button(
-            bottom_frame, text="Converti in PDF", command=self._on_convert
-        )
-        btn_convert.pack(side=tk.RIGHT)
-
-    def _build_files_tab(self, parent: ttk.Frame):
-        """Tab per la configurazione di file e cartelle."""
+    def _build_convert_tab(self, parent: ttk.Frame):
+        """Tab principale per la conversione."""
         # Input folder
         ttk.Label(parent, text="Cartella di input:").grid(row=0, column=0, sticky=tk.W, pady=4)
-        entry_input = ttk.Entry(parent, textvariable=self.var_input_folder, width=50)
-        entry_input.grid(row=0, column=1, sticky=tk.EW, padx=5, pady=4)
+        ttk.Entry(parent, textvariable=self.var_input_folder, width=50).grid(
+            row=0, column=1, sticky=tk.EW, padx=5, pady=4
+        )
         ttk.Button(parent, text="Sfoglia...", command=self._browse_input).grid(
             row=0, column=2, pady=4
         )
 
         # Output folder
         ttk.Label(parent, text="Cartella di output:").grid(row=1, column=0, sticky=tk.W, pady=4)
-        entry_output = ttk.Entry(parent, textvariable=self.var_output_folder, width=50)
-        entry_output.grid(row=1, column=1, sticky=tk.EW, padx=5, pady=4)
+        ttk.Entry(parent, textvariable=self.var_output_folder, width=50).grid(
+            row=1, column=1, sticky=tk.EW, padx=5, pady=4
+        )
         ttk.Button(parent, text="Sfoglia...", command=self._browse_output).grid(
             row=1, column=2, pady=4
         )
 
-        # Output filename
-        ttk.Label(parent, text="Nome file PDF:").grid(row=2, column=0, sticky=tk.W, pady=4)
-        ttk.Entry(parent, textvariable=self.var_output_filename, width=50).grid(
-            row=2, column=1, sticky=tk.EW, padx=5, pady=4
+        # Separatore
+        ttk.Separator(parent, orient=tk.HORIZONTAL).grid(
+            row=2, column=0, columnspan=3, sticky=tk.EW, pady=10
         )
 
-        # File pattern
-        ttk.Label(parent, text="Pattern file (glob):").grid(row=3, column=0, sticky=tk.W, pady=4)
-        ttk.Entry(parent, textvariable=self.var_file_pattern, width=50).grid(
-            row=3, column=1, sticky=tk.EW, padx=5, pady=4
+        # Selezione profilo
+        ttk.Label(parent, text="Tipo documento:", font=("", 9, "bold")).grid(
+            row=3, column=0, sticky=tk.W, pady=4
         )
+        profile_frame = ttk.Frame(parent)
+        profile_frame.grid(row=3, column=1, sticky=tk.W, padx=5, pady=4)
 
-        # Info
-        info_frame = ttk.LabelFrame(parent, text="Anteprima file", padding=10)
+        ttk.Radiobutton(
+            profile_frame, text="DMEP (ANV-213 DME-P)",
+            variable=self.var_profile, value="DMEP"
+        ).pack(side=tk.LEFT, padx=(0, 15))
+        ttk.Radiobutton(
+            profile_frame, text="MMR (ANV-243 MMR-RNAV)",
+            variable=self.var_profile, value="MMR"
+        ).pack(side=tk.LEFT, padx=(0, 15))
+        ttk.Radiobutton(
+            profile_frame, text="Tutti",
+            variable=self.var_profile, value="ALL"
+        ).pack(side=tk.LEFT)
+
+        # Anteprima file
+        info_frame = ttk.LabelFrame(parent, text="File trovati", padding=10)
         info_frame.grid(row=4, column=0, columnspan=3, sticky=tk.NSEW, pady=10)
 
-        self.file_listbox = tk.Listbox(info_frame, height=8)
+        self.file_listbox = tk.Listbox(info_frame, height=10)
         scrollbar = ttk.Scrollbar(info_frame, orient=tk.VERTICAL, command=self.file_listbox.yview)
         self.file_listbox.configure(yscrollcommand=scrollbar.set)
         self.file_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        ttk.Button(parent, text="Aggiorna lista file", command=self._refresh_file_list).grid(
-            row=5, column=1, sticky=tk.E, pady=4
+        # Pulsanti
+        btn_frame = ttk.Frame(parent)
+        btn_frame.grid(row=5, column=0, columnspan=3, sticky=tk.EW, pady=8)
+
+        ttk.Button(btn_frame, text="Aggiorna lista", command=self._refresh_file_list).pack(
+            side=tk.LEFT, padx=(0, 10)
         )
+        ttk.Button(
+            btn_frame, text="Converti in PDF", command=self._on_convert
+        ).pack(side=tk.RIGHT)
 
         parent.columnconfigure(1, weight=1)
+        parent.rowconfigure(4, weight=1)
 
     def _build_page_tab(self, parent: ttk.Frame):
         """Tab per la configurazione della pagina."""
@@ -158,14 +174,13 @@ class PolpyApp:
 
         # Formato pagina
         ttk.Label(parent, text="Formato pagina:").grid(row=1, column=0, sticky=tk.W, pady=4)
-        size_combo = ttk.Combobox(
+        ttk.Combobox(
             parent,
             textvariable=self.var_page_size,
             values=["A4", "Letter", "Legal"],
             state="readonly",
             width=15,
-        )
-        size_combo.grid(row=1, column=1, sticky=tk.W, padx=5, pady=4)
+        ).grid(row=1, column=1, sticky=tk.W, padx=5, pady=4)
 
         # Margini
         ttk.Separator(parent, orient=tk.HORIZONTAL).grid(
@@ -198,13 +213,9 @@ class PolpyApp:
         ttk.Label(parent, text="Font normale", font=("", 9, "bold")).grid(
             row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 4)
         )
-
         ttk.Label(parent, text="Nome:").grid(row=1, column=0, sticky=tk.W, pady=4)
         ttk.Combobox(
-            parent,
-            textvariable=self.var_normal_font_name,
-            values=available_fonts,
-            width=20,
+            parent, textvariable=self.var_normal_font_name, values=available_fonts, width=20,
         ).grid(row=1, column=1, sticky=tk.W, padx=5, pady=4)
 
         ttk.Label(parent, text="Dimensione:").grid(row=2, column=0, sticky=tk.W, pady=4)
@@ -212,7 +223,6 @@ class PolpyApp:
             row=2, column=1, sticky=tk.W, padx=5, pady=4
         )
 
-        # Separatore
         ttk.Separator(parent, orient=tk.HORIZONTAL).grid(
             row=3, column=0, columnspan=2, sticky=tk.EW, pady=10
         )
@@ -221,13 +231,9 @@ class PolpyApp:
         ttk.Label(parent, text="Font titoli", font=("", 9, "bold")).grid(
             row=4, column=0, columnspan=2, sticky=tk.W, pady=(0, 4)
         )
-
         ttk.Label(parent, text="Nome:").grid(row=5, column=0, sticky=tk.W, pady=4)
         ttk.Combobox(
-            parent,
-            textvariable=self.var_title_font_name,
-            values=available_fonts,
-            width=20,
+            parent, textvariable=self.var_title_font_name, values=available_fonts, width=20,
         ).grid(row=5, column=1, sticky=tk.W, padx=5, pady=4)
 
         ttk.Label(parent, text="Dimensione:").grid(row=6, column=0, sticky=tk.W, pady=4)
@@ -235,7 +241,6 @@ class PolpyApp:
             row=6, column=1, sticky=tk.W, padx=5, pady=4
         )
 
-        # Separatore
         ttk.Separator(parent, orient=tk.HORIZONTAL).grid(
             row=7, column=0, columnspan=2, sticky=tk.EW, pady=10
         )
@@ -246,79 +251,48 @@ class PolpyApp:
             row=8, column=1, sticky=tk.W, padx=5, pady=4
         )
 
-    def _build_patterns_tab(self, parent: ttk.Frame):
-        """Tab per la configurazione dei pattern regex."""
-        ttk.Label(parent, text="Sequenze PCL da rimuovere (una per riga):").grid(
-            row=0, column=0, sticky=tk.W, pady=4
-        )
-
-        self.pcl_text = tk.Text(parent, height=5, width=60, font=("Courier", 9))
-        self.pcl_text.grid(row=1, column=0, sticky=tk.NSEW, pady=4)
-        pcl_content = "\n".join(self.config.pcl_cleanup_patterns)
-        self.pcl_text.insert("1.0", pcl_content)
-
-        ttk.Separator(parent, orient=tk.HORIZONTAL).grid(
-            row=2, column=0, sticky=tk.EW, pady=10
-        )
-
-        ttk.Label(parent, text="Intestazioni speciali (regex, una per riga):").grid(
-            row=3, column=0, sticky=tk.W, pady=4
-        )
-
-        self.headers_text = tk.Text(parent, height=5, width=60, font=("Courier", 9))
-        self.headers_text.grid(row=4, column=0, sticky=tk.NSEW, pady=4)
-        headers_content = "\n".join(self.config.special_headers)
-        self.headers_text.insert("1.0", headers_content)
-
-        ttk.Separator(parent, orient=tk.HORIZONTAL).grid(
-            row=5, column=0, sticky=tk.EW, pady=10
-        )
-
-        ttk.Label(parent, text="Pattern cambio pagina (regex):").grid(
-            row=6, column=0, sticky=tk.W, pady=4
-        )
-        self.var_page_break = tk.StringVar(value=self.config.page_break_pattern)
-        ttk.Entry(parent, textvariable=self.var_page_break, width=60).grid(
-            row=7, column=0, sticky=tk.EW, pady=4
-        )
-
-        parent.columnconfigure(0, weight=1)
-        parent.rowconfigure(1, weight=1)
-        parent.rowconfigure(4, weight=1)
-
     # =========================================================================
     # Azioni
     # =========================================================================
 
     def _browse_input(self):
-        """Apre il dialogo per selezionare la cartella di input."""
         folder = filedialog.askdirectory(title="Seleziona cartella di input")
         if folder:
             self.var_input_folder.set(folder)
 
     def _browse_output(self):
-        """Apre il dialogo per selezionare la cartella di output."""
         folder = filedialog.askdirectory(title="Seleziona cartella di output")
         if folder:
             self.var_output_folder.set(folder)
 
+    def _get_selected_profiles(self):
+        """Restituisce la lista dei profili selezionati."""
+        choice = self.var_profile.get()
+        if choice == "ALL":
+            return list(ALL_PROFILES.values())
+        return [ALL_PROFILES[choice]]
+
     def _refresh_file_list(self):
-        """Aggiorna la lista dei file trovati nella cartella di input."""
+        """Aggiorna la lista dei file trovati."""
         self.file_listbox.delete(0, tk.END)
         input_path = Path(self.var_input_folder.get())
-        pattern = self.var_file_pattern.get()
 
         if not input_path.exists():
             self.file_listbox.insert(tk.END, f"(cartella '{input_path}' non trovata)")
             return
 
-        files = sorted(input_path.glob(pattern))
-        if not files:
-            self.file_listbox.insert(tk.END, f"(nessun file '{pattern}' trovato)")
-            return
+        profiles = self._get_selected_profiles()
+        total = 0
+        for profile in profiles:
+            files = sorted(input_path.glob(profile.file_pattern))
+            if files:
+                self.file_listbox.insert(tk.END, f"--- {profile.name} ({len(files)} file) ---")
+                for f in files:
+                    self.file_listbox.insert(tk.END, f"  {f.name}")
+                total += len(files)
 
-        for f in files:
-            self.file_listbox.insert(tk.END, f.name)
+        if total == 0:
+            self.file_listbox.insert(tk.END, "(nessun file trovato per il profilo selezionato)")
 
     def _build_config_from_ui(self) -> AppConfig:
         """Costruisce un AppConfig dai valori correnti dell'interfaccia."""
@@ -340,32 +314,14 @@ class PolpyApp:
             size=float(self.var_title_font_size.get()),
         )
 
-        pcl_patterns = [
-            line.strip()
-            for line in self.pcl_text.get("1.0", tk.END).splitlines()
-            if line.strip()
-        ]
-
-        special_headers = [
-            line.strip()
-            for line in self.headers_text.get("1.0", tk.END).splitlines()
-            if line.strip()
-        ]
-
         return AppConfig(
             input_folder=self.var_input_folder.get(),
             output_folder=self.var_output_folder.get(),
-            output_filename=self.var_output_filename.get(),
+            output_filename="output.pdf",
             page=page,
             normal_font=normal_font,
             title_font=title_font,
             line_height=float(self.var_line_height.get()),
-            file_pattern=self.var_file_pattern.get(),
-            pcl_cleanup_patterns=pcl_patterns,
-            page_break_pattern=self.var_page_break.get(),
-            test_pattern=self.config.test_pattern,
-            consumption_pattern=self.config.consumption_pattern,
-            special_headers=special_headers,
         )
 
     def _on_convert(self):
@@ -381,34 +337,50 @@ class PolpyApp:
             messagebox.showerror("Errore", f"La cartella di input '{input_path}' non esiste.")
             return
 
-        files = sorted(input_path.glob(config.file_pattern))
-        if not files:
+        profiles = self._get_selected_profiles()
+
+        # Verifica che ci siano file per almeno un profilo
+        has_files = False
+        for profile in profiles:
+            if list(input_path.glob(profile.file_pattern)):
+                has_files = True
+                break
+
+        if not has_files:
             messagebox.showwarning(
                 "Nessun file",
-                f"Nessun file '{config.file_pattern}' trovato in '{input_path}'.",
+                "Nessun file trovato per il profilo selezionato.",
             )
             return
 
-        self.status_var.set(f"Conversione di {len(files)} file in corso...")
+        self.status_var.set("Conversione in corso...")
         self.progress.start(10)
 
         def _worker():
             try:
-                output_path = generate_pdf(files, config)
-                self.root.after(0, self._on_convert_done, str(output_path))
+                results = []
+                for profile in profiles:
+                    files = sorted(input_path.glob(profile.file_pattern))
+                    if not files:
+                        continue
+                    output_path = generate_pdf(files, config, profile)
+                    results.append(f"{profile.name}: {output_path}")
+
+                result_msg = "\n".join(results)
+                self.root.after(0, self._on_convert_done, result_msg)
             except Exception as e:
                 self.root.after(0, self._on_convert_error, str(e))
 
         Thread(target=_worker, daemon=True).start()
 
-    def _on_convert_done(self, output_path: str):
+    def _on_convert_done(self, result_msg: str):
         """Callback al termine della conversione."""
         self.progress.stop()
-        self.status_var.set(f"PDF creato: {output_path}")
-        messagebox.showinfo("Conversione completata", f"PDF generato:\n{output_path}")
+        self.status_var.set("Conversione completata.")
+        messagebox.showinfo("Conversione completata", f"PDF generati:\n\n{result_msg}")
 
     def _on_convert_error(self, error_msg: str):
-        """Callback in caso di errore durante la conversione."""
+        """Callback in caso di errore."""
         self.progress.stop()
         self.status_var.set("Errore durante la conversione.")
         messagebox.showerror("Errore", f"Errore durante la conversione:\n{error_msg}")

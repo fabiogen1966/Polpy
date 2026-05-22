@@ -1,16 +1,23 @@
 # Polpy
 
-Convertitore di file PCL/PRN in un unico documento PDF con interfaccia grafica Tkinter.
+Convertitore di file PCL/PRN in PDF con interfaccia grafica Tkinter.
 
-Polpy legge file `.prn` (output di stampa in formato PCL), rimuove le sequenze di escape, riconosce intestazioni e struttura del documento, e genera un PDF formattato.
+Polpy legge file `.prn` (output di stampa in formato PCL), rimuove le sequenze di escape, riconosce intestazioni e struttura del documento, e genera PDF formattati. Supporta più profili documento con rilevamento automatico.
+
+## Profili supportati
+
+| Profilo | Equipaggiamento | File pattern | Output |
+|---------|----------------|--------------|--------|
+| **DMEP** | ANV-213 DME-P | `DMEP_Efa_*.prn` | `DMEP_output.pdf` |
+| **MMR** | ANV-243 MMR-RNAV | `MMR_Efa_*.prn` | `MMR_output.pdf` |
 
 ## Funzionalità
 
-- Interfaccia grafica con configurazione completa tramite tab
+- Interfaccia grafica con selezione profilo (DMEP, MMR, o entrambi)
 - Modalità CLI per automazione e scripting
-- Configurazione parametrica via YAML
+- Configurazione parametrica (pagina, font, margini)
 - Riconoscimento automatico di intestazioni, test e struttura documento
-- Pulizia sequenze di escape PCL configurabile
+- Pulizia sequenze di escape PCL per profilo
 - Supporto orientamento landscape/portrait e formati A4, Letter, Legal
 - Eseguibile standalone per distribuzione senza Python installato
 
@@ -22,8 +29,9 @@ Polpy legge file `.prn` (output di stampa in formato PCL), rimuove le sequenze d
 4. Crea accanto all'exe le cartelle `input/` e `output/`
 5. Metti i file `.prn` nella cartella `input/`
 6. Doppio click su `Polpy.exe`
-7. Dalla GUI seleziona le cartelle, configura i parametri e premi "Converti in PDF"
-8. Il PDF viene generato nella cartella `output/`
+7. Seleziona il tipo di documento (DMEP, MMR, o Tutti)
+8. Premi "Converti in PDF"
+9. I PDF vengono generati nella cartella `output/`
 
 > Non serve installare Python né altre dipendenze. L'exe è autocontenuto e compatibile con Windows 7, 10, 11.
 
@@ -59,36 +67,37 @@ pip install -e .
 python -m src
 ```
 
-L'interfaccia grafica permette di configurare tutti i parametri tramite tab dedicate:
-- **File e Cartelle** — selezione input/output con browser, anteprima file trovati
-- **Pagina** — orientamento, formato, margini
-- **Font** — font normale e titoli, altezza riga
-- **Pattern** — sequenze PCL da rimuovere, intestazioni speciali, pattern cambio pagina
+La GUI presenta:
+- **Tab Conversione** — selezione cartelle, scelta profilo (DMEP/MMR/Tutti), anteprima file, pulsante conversione
+- **Tab Pagina** — orientamento, formato, margini
+- **Tab Font** — font normale e titoli, altezza riga
 
 ### Modalità CLI
 
 ```bash
-# Usa la modalità a riga di comando
 python -m src --cli
+python -m src --cli --input ./miei_file --output-folder ./risultati
+```
 
-# Con un file di configurazione personalizzato
-python -m src --cli --config mio_config.yaml
+### Script standalone (da eseguire nella directory dei file .prn)
 
-# Specifica cartella di input e nome output
-python -m src --cli --input ./miei_file --output report.pdf
+```bash
+cd <cartella con i .prn>
 
-# Specifica cartella di output
-python -m src --cli --output-folder ./risultati
+# Solo DMEP
+python <percorso>/scripts/converti_dmep_pdf.py
+
+# Solo MMR
+python <percorso>/scripts/converti_mmr_pdf.py
+
+# Entrambi
+python <percorso>/scripts/converti_all_pdf.py
 ```
 
 ### Come comando installato
 
 ```bash
-# CLI
 polpy --help
-polpy --input input --output report.pdf
-
-# GUI
 polpy-gui
 ```
 
@@ -104,7 +113,6 @@ Per ricreare l'exe distribuibile su macchine senza Python:
 ### Procedura
 
 ```bash
-# Lancia lo script di build
 build.bat
 ```
 
@@ -113,23 +121,13 @@ Lo script automaticamente:
 2. Installa le dipendenze + PyInstaller
 3. Genera l'eseguibile standalone `dist/Polpy.exe`
 
-### Risultato
-
-```
-dist/
-└── Polpy.exe    ← eseguibile standalone (doppio click)
-```
-
 ## Configurazione
 
-Tutti i parametri sono configurabili tramite il file `config.yaml` o direttamente dalla GUI:
+I parametri di pagina e font sono configurabili dalla GUI o tramite `config.yaml`:
 
 | Parametro | Descrizione | Default |
 |-----------|-------------|---------|
-| `input_folder` | Cartella con i file PRN | `input` |
-| `output_folder` | Cartella di destinazione del PDF | `output` |
-| `output_filename` | Nome del file PDF generato | `output_finale.pdf` |
-| `page.orientation` | Orientamento pagina (`landscape`/`portrait`) | `landscape` |
+| `page.orientation` | Orientamento pagina | `landscape` |
 | `page.size` | Formato pagina (`A4`, `Letter`, `Legal`) | `A4` |
 | `page.left_margin_mm` | Margine sinistro in mm | `10` |
 | `page.top_margin_mm` | Margine superiore in mm | `20` |
@@ -139,10 +137,8 @@ Tutti i parametri sono configurabili tramite il file `config.yaml` o direttament
 | `fonts.title.name` | Font per i titoli | `Courier-Bold` |
 | `fonts.title.size` | Dimensione font titoli | `13` |
 | `line_height` | Altezza riga in punti | `11.5` |
-| `file_pattern` | Glob pattern per i file di input | `*.prn` |
-| `pcl_cleanup_patterns` | Sequenze PCL da rimuovere | vedi config.yaml |
-| `page_break_pattern` | Regex per il cambio pagina | `(pag\|pagina\|page)\s*\d+` |
-| `special_headers` | Pattern per intestazioni speciali | vedi config.yaml |
+
+I pattern di riconoscimento (test, intestazioni, sequenze PCL) sono definiti nei profili in `src/profiles.py`.
 
 ## Struttura del progetto
 
@@ -164,8 +160,11 @@ Polpy/
 │   └── Polpy.exe          # Eseguibile standalone
 ├── input/                 # Cartella per i file PRN di input
 ├── output/                # Cartella di destinazione PDF
-├── scripts/               # Script legacy/utility
-│   └── converti_pcl_pdf.py
+├── scripts/               # Script standalone
+│   ├── converti_dmep_pdf.py   # Solo DMEP
+│   ├── converti_mmr_pdf.py    # Solo MMR
+│   ├── converti_all_pdf.py    # Entrambi
+│   └── converti_pcl_pdf.py    # Script originale (legacy)
 └── src/                   # Codice sorgente
     ├── __init__.py        # Versione del pacchetto
     ├── __main__.py        # Entry point (GUI default, --cli per CLI)
@@ -173,19 +172,15 @@ Polpy/
     ├── config_loader.py   # Caricamento configurazione YAML
     ├── gui.py             # Interfaccia grafica Tkinter
     ├── pcl_cleaner.py     # Pulizia sequenze PCL
-    └── pdf_generator.py   # Generazione del PDF
+    ├── pdf_generator.py   # Generazione del PDF
+    └── profiles.py        # Profili documento (DMEP, MMR)
 ```
 
 ## Sviluppo
 
 ```bash
-# Installa dipendenze di sviluppo
 pip install -e ".[dev]"
-
-# Linting
 ruff check src/
-
-# Test
 pytest
 ```
 

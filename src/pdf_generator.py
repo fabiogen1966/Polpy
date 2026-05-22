@@ -2,13 +2,14 @@
 
 import re
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import landscape, portrait, A4, letter, legal
 from reportlab.lib.units import mm
 
 from .config_loader import AppConfig
+from .profiles import DocumentProfile
 
 
 # Mapping delle dimensioni pagina supportate
@@ -32,12 +33,14 @@ def _get_page_dimensions(config: AppConfig) -> Tuple[float, float]:
     return orientation_fn(base_size)
 
 
-def generate_pdf(files: List[Path], config: AppConfig) -> Path:
-    """Genera un PDF a partire da una lista di file di testo ripuliti.
+def generate_pdf(files: List[Path], config: AppConfig,
+                 profile: "DocumentProfile" = None) -> Path:
+    """Genera un PDF a partire da una lista di file di testo.
 
     Args:
-        files: Lista di Path ai file di testo (già ripuliti da PCL).
-        config: Configurazione dell'applicazione.
+        files: Lista di Path ai file PRN.
+        config: Configurazione dell'applicazione (pagina, font, margini).
+        profile: Profilo documento (pattern specifici). Se None, usa i pattern dal config.
 
     Returns:
         Path del file PDF generato.
@@ -50,7 +53,14 @@ def generate_pdf(files: List[Path], config: AppConfig) -> Path:
     # Calcola output path
     output_dir = Path(config.output_folder)
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / config.output_filename
+
+    # Se c'è un profilo, usa il suo output filename
+    if profile:
+        output_filename = profile.output_filename
+    else:
+        output_filename = config.output_filename
+
+    output_path = output_dir / output_filename
 
     c = canvas.Canvas(str(output_path), pagesize=pagesize)
 
@@ -64,17 +74,25 @@ def generate_pdf(files: List[Path], config: AppConfig) -> Path:
     title_font = (config.title_font.name, config.title_font.size)
     line_height = config.line_height
 
-    # Compila i pattern regex
-    page_pattern = re.compile(config.page_break_pattern, re.IGNORECASE)
-    test_pattern = re.compile(config.test_pattern, re.IGNORECASE)
-    consumption_pattern = re.compile(config.consumption_pattern, re.IGNORECASE)
-    special_headers = [re.compile(p, re.IGNORECASE) for p in config.special_headers]
+    # Compila i pattern regex dal profilo o dal config
+    if profile:
+        pcl_patterns = profile.pcl_cleanup_patterns
+        page_pattern = re.compile(profile.page_break_pattern, re.IGNORECASE)
+        test_pattern = re.compile(profile.test_pattern, re.IGNORECASE)
+        consumption_pattern = re.compile(profile.consumption_pattern, re.IGNORECASE)
+        special_headers = [re.compile(p, re.IGNORECASE) for p in profile.special_headers]
+    else:
+        pcl_patterns = config.pcl_cleanup_patterns
+        page_pattern = re.compile(config.page_break_pattern, re.IGNORECASE)
+        test_pattern = re.compile(config.test_pattern, re.IGNORECASE)
+        consumption_pattern = re.compile(config.consumption_pattern, re.IGNORECASE)
+        special_headers = [re.compile(p, re.IGNORECASE) for p in config.special_headers]
 
     first = True
 
     for file in files:
         raw = file.read_text(errors="ignore")
-        text = clean_pcl(raw, config.pcl_cleanup_patterns)
+        text = clean_pcl(raw, pcl_patterns)
         lines = text.split("\n")
 
         # Salta file vuoti
@@ -102,12 +120,12 @@ def generate_pdf(files: List[Path], config: AppConfig) -> Path:
                 c.drawCentredString(page_w / 2, y, stripped)
                 y -= (line_height + 2)
 
-            # Test 01-18
+            # Test
             else:
                 tm = test_pattern.match(stripped)
                 if tm:
                     test_no, par, desc = tm.groups()
-                    formatted = f"{test_no} - ATP Par. {par} {desc}"
+                    formatted = f"{test_no} - {par} {desc}"
                     c.setFont(*title_font)
                     c.drawCentredString(page_w / 2, y, formatted)
                     y -= (line_height + 2)
@@ -117,13 +135,13 @@ def generate_pdf(files: List[Path], config: AppConfig) -> Path:
                     c.drawString(left_margin, y, line.rstrip())
                     y -= line_height
 
-            # Cambio pagina logico (pattern "pag. N")
+            # Cambio pagina logico
             if page_pattern.search(stripped):
                 remaining = any(l.strip() for l in lines[idx + 1:])
                 if remaining:
                     c.showPage()
                     y = top_margin
-                    continue
+                continue
 
             # Overflow fisico della pagina
             if y < bottom_limit:
