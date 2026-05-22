@@ -1,0 +1,5 @@
+# Binari - non fare diff/merge
+*.exe binary
+*.dll binary
+*.pyd binary
+*.zip binary

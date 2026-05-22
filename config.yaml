@@ -1,0 +1,56 @@
+# =====================================================
+# Polpy - Configurazione
+# =====================================================
+
+# Cartelle di input e output
+input_folder: "input"
+output_folder: "output"
+
+# Nome del file PDF generato
+output_filename: "output_finale.pdf"
+
+# Impostazioni pagina
+page:
+  orientation: "landscape"    # landscape | portrait
+  size: "A4"                  # A4, Letter, Legal
+  left_margin_mm: 10
+  top_margin_mm: 20
+  bottom_margin_mm: 10
+
+# Font
+fonts:
+  normal:
+    name: "Courier"
+    size: 10.5
+  title:
+    name: "Courier-Bold"
+    size: 13
+
+# Altezza riga in punti
+line_height: 11.5
+
+# Pattern dei file da elaborare (glob)
+file_pattern: "*.prn"
+
+# Sequenze PCL da rimuovere (escape sequences)
+pcl_cleanup_patterns:
+  - '\x1b\(s1Q'
+  - '\x1b\(s1B'
+  - '\x1b\(s0B'
+  - '\x1b&k1S'
+  - '\x1b&k0S'
+
+# Pattern per riconoscere cambio pagina
+page_break_pattern: '(pag\.?|pagina|page)\s*\d+'
+
+# Pattern per riconoscere test 01-18
+test_pattern: '^\s*(0[1-9]|1[0-8])\s*-\s*ATP\s+Par\.\s*([0-9.]+)\s+(.+?)\s*$'
+
+# Pattern per riconoscere riga "Consumption"
+consumption_pattern: '^\s*01\s*-\s*Consumption\s*$'
+
+# Intestazioni speciali (centrate e in grassetto)
+# Inserire qui i pattern regex per le intestazioni specifiche del documento
+special_headers:
+  - 'DOCUMENT-CODE-1\s+Issue\s+\w+\s+\w+\s+\d{4}'
+  - 'DOCUMENT-CODE-2\s+EQUIPMENT\s+P/N\s+[\d\-/]+'

@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+.venv38/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.kiro/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Output generato
+output/*.pdf
+
+# Environment e segreti
+.env
+.env.local
+*.pem
+*.key
+*.secret
+
+# PyInstaller (artefatti di build, non la dist finale)
+*.manifest
+*.spec.bak
+
+# Binari esterni non di progetto
+DSExplorer.EXE
+
+# Dati cliente (file di input specifici)
+input/*.prn
+input/*.pcl
+input/*.txt
+
+# Configurazione locale (override personali)
+config.local.yaml
