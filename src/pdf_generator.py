@@ -33,6 +33,19 @@ def _get_page_dimensions(config: AppConfig) -> Tuple[float, float]:
     return orientation_fn(base_size)
 
 
+def _draw_underlined_text(c, x, y, text, font_name, font_size):
+    """Disegna testo con sottolineatura."""
+    c.setFont(font_name, font_size)
+    c.drawCentredString(x, y, text)
+    # Calcola la larghezza del testo per la sottolineatura
+    text_width = c.stringWidth(text, font_name, font_size)
+    x_start = x - text_width / 2
+    x_end = x + text_width / 2
+    y_line = y - 2  # Posizione della linea sotto il testo
+    c.setLineWidth(0.5)
+    c.line(x_start, y_line, x_end, y_line)
+
+
 def generate_pdf(files: List[Path], config: AppConfig,
                  profile: Optional[DocumentProfile] = None) -> Path:
     """Genera un PDF a partire da una lista di file PRN.
@@ -94,7 +107,7 @@ def generate_pdf(files: List[Path], config: AppConfig,
         processed_lines = process_file_with_bold(raw, pcl_sequences)
 
         # Salta file vuoti
-        if not any(line.strip() for line, _ in processed_lines):
+        if not any(line.strip() for line, _, _ in processed_lines):
             continue
 
         if not first:
@@ -103,10 +116,10 @@ def generate_pdf(files: List[Path], config: AppConfig,
 
         y = top_margin
 
-        for idx, (line, is_bold) in enumerate(processed_lines):
+        for idx, (line, is_bold, is_underline) in enumerate(processed_lines):
             stripped = line.strip()
 
-            # Intestazioni speciali
+            # Intestazioni speciali (dal pattern regex)
             if any(p.search(stripped) for p in special_headers):
                 c.setFont(*title_font)
                 c.drawCentredString(page_w / 2, y, stripped)
@@ -127,7 +140,13 @@ def generate_pdf(files: List[Path], config: AppConfig,
                 c.drawCentredString(page_w / 2, y, formatted)
                 y -= (line_height + 2)
 
-            # Testo bold (blocco titolo certificato nel file B)
+            # Testo bold + underline (blocco certificato nel file B)
+            elif is_bold and is_underline and stripped:
+                _draw_underlined_text(c, page_w / 2, y, stripped,
+                                      title_font[0], title_font[1])
+                y -= (line_height + 2)
+
+            # Testo bold senza underline (intestazione file, prime 2 righe)
             elif is_bold and stripped:
                 c.setFont(*title_font)
                 c.drawCentredString(page_w / 2, y, stripped)
@@ -141,7 +160,7 @@ def generate_pdf(files: List[Path], config: AppConfig,
 
             # Cambio pagina logico
             if page_pattern.search(stripped):
-                remaining = any(l.strip() for l, _ in processed_lines[idx + 1:])
+                remaining = any(l.strip() for l, _, _ in processed_lines[idx + 1:])
                 if remaining:
                     c.showPage()
                     y = top_margin
@@ -149,7 +168,7 @@ def generate_pdf(files: List[Path], config: AppConfig,
 
             # Overflow fisico della pagina
             if y < bottom_limit:
-                remaining = any(l.strip() for l, _ in processed_lines[idx + 1:])
+                remaining = any(l.strip() for l, _, _ in processed_lines[idx + 1:])
                 if remaining:
                     c.showPage()
                     y = top_margin
