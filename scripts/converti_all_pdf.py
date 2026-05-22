@@ -209,9 +209,9 @@ def generate_pdf(files, profile, output_path):
                 draw_underlined_text(c, PAGE_W / 2, y, stripped, title_font[0], title_font[1])
                 y -= (line_height + 2)
             elif is_bold and stripped:
-                c.setFont(*title_font)
-                c.drawCentredString(PAGE_W / 2, y, stripped)
-                y -= (line_height + 2)
+                c.setFont("Courier-Bold", 10.5)
+                c.drawString(left_margin, y, line.rstrip())
+                y -= line_height
             else:
                 c.setFont(*normal_font)
                 c.drawString(left_margin, y, line.rstrip())

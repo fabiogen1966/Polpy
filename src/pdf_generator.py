@@ -148,9 +148,9 @@ def generate_pdf(files: List[Path], config: AppConfig,
 
             # Testo bold senza underline (intestazione file, prime 2 righe)
             elif is_bold and stripped:
-                c.setFont(*title_font)
-                c.drawCentredString(page_w / 2, y, stripped)
-                y -= (line_height + 2)
+                c.setFont("Courier-Bold", config.normal_font.size)
+                c.drawString(left_margin, y, line.rstrip())
+                y -= line_height
 
             # Testo normale
             else:
